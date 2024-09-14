@@ -1,0 +1,38 @@
+:root {
+    --pdoc-background: #111214;
+}
+
+.pdoc {
+    --text: #e3e4d9;
+    --muted: #adad90;
+    --link: #58a6ff;
+    --link-hover: #3989ff;
+    --code: #1e1e1e;
+    --active: #3c3c3f;
+
+    --accent: #1e2127;
+    --accent2: #353446;
+
+    --nav-hover: rgba(0, 0, 0, 0.1);
+    --name: #77C1FF;
+    --def: #0cdd0c;
+    --annotation: #00c037;
+
+    line-height: 1.7;
+}
+
+.pdoc-code {
+    margin-left: 0em;
+    margin-right: 0em;
+}
+img, svg {
+    vertical-align: middle;
+    width: 100%;
+}
+
+main {
+    margin: auto;
+}
+nav {
+    left: max(calc(50% - var(--sidebar-width)/2 - 26rem), 0px)
+}

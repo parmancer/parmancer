@@ -1,0 +1,74 @@
+name: Checks
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    - name: Install dependencies
+      run: pip install tox tox-gh-actions
+    - name: Test with tox
+      run: tox
+
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-in-project: true
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'poetry'
+    - run: poetry install
+    - run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
+    - name: Pyright
+      uses: jakebailey/pyright-action@v2
+      with:
+        pylance-version: latest-release
+    - name: Mypy
+      run: mypy .
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-in-project: true
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'poetry'
+    - run: poetry install
+    - run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
+    - name: Pyright
+      uses: jakebailey/pyright-action@v2
+      with:
+        pylance-version: latest-release
+    - name: Mypy
+      run: mypy --strict --ignore-missing-imports .

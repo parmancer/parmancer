@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "Parmancer"
+version = "0.1.0"
+description = "Parse structured data from text using parser combinators"
+authors = ["Rob Hornby <robjhornby@gmail.com>"]
+readme = "README.md"
+packages = [{include = "parmancer"}]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+typing-extensions = ">=4.5.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8"
+pytest-markdown-docs = {version = "*", python = ">=3.8,<4"}
+mypy = ">=1"
+pyright = ">=1.1"
+docutils = {version = ">=0.21.2", python = ">=3.9"}
+pdoc = "^14.4.0"
+mkinit = "^1.1.0"
+pre-commit = {version = "*", python = ">=3.8,<4"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+exclude = [
+    "^scrap/"
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+strict = true
+exclude = [
+    "^scrap/"
+]
+
+[tool.pytest.ini_options]
+python_files = ["examples/*.py", "tests/*.py"]
