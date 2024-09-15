@@ -11,6 +11,10 @@ Using a type checker with Parmancer gives immediate feedback about parser result
 pip install parmancer
 ```
 
+## Documentation
+
+https://parmancer.github.io/parmancer
+
 ## Introductory example
 
 This example shows a parser which can parse text like `"Hello World! 1 + 2 + 3"` to extract the name in `Hello <name>!` and find the sum of the numbers which come after it:
