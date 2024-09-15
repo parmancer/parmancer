@@ -11,7 +11,7 @@ Using a type checker with Parmancer gives immediate feedback about parser result
 pip install parmancer
 ```
 
-## Documentation
+## Documentation
 
 https://parmancer.github.io/parmancer
 
