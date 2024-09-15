@@ -1,10 +1,27 @@
 [tool.poetry]
-name = "Parmancer"
-version = "0.1.0"
+name = "parmancer"
+version = "0.1.1"
 description = "Parse structured data from text using parser combinators"
 authors = ["Rob Hornby <robjhornby@gmail.com>"]
 readme = "README.md"
 packages = [{include = "parmancer"}]
+license = "MIT"
+documentation = "https://parmancer.github.io/parmancer/"
+repository = "https://github.com/parmancer/parmancer"
+keywords = ["parser", "parsing", "parser combinator"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Interpreters",
+    "Topic :: Text Processing",
+    "Typing :: Typed",
+    "Topic :: File Formats",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8"
