@@ -40,7 +40,7 @@ jobs:
           pipx install poetry
           poetry install
       - name: Build docs
-        run: poetry run pdoc -t docs/template parmancer -o ./docbuild
+        run: poetry run pdoc -t docs/template parmancer -o ./docs/build
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
