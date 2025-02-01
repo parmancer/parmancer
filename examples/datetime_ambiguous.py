@@ -14,6 +14,7 @@ import datetime
 from dataclasses import dataclass
 
 import pytest
+
 from parmancer import (
     ParseError,
     end_of_text,
@@ -101,9 +102,4 @@ def test_self_contained_example() -> None:
     assert date.parse("2001-02-03") == (2001, 2, 3)
 
     # This ambiguous input leads to a failure to parse
-    try:
-        date.parse("01-02-03")
-        parsed = True
-    except ParseError:
-        parsed = False
-    assert parsed is False
+    assert date.match("01-02-03").status is False

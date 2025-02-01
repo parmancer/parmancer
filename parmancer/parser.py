@@ -187,27 +187,33 @@ class TextState:
     def failure(self: Self, message: str) -> Result[Any]:
         """Create a failure Result with the given failure message."""
         info = FailureInfo(index=self.index, message=message)
-        furthest_failure = (
-            max(info.index for info in self.failures) if self.failures else -1
-        )
-        if furthest_failure < info.index:
-            failures: Tuple[FailureInfo, ...] = (info,)
-        elif furthest_failure == info.index:
-            failures = (*self.failures, info)
-        else:
-            failures = self.failures
 
+        new_state = self.merge_failures((info,))
         return Result(
             False,
-            self.progress(
-                index=self.index,
-                failures=failures,
-            ),
+            new_state,
             info,
             None,
         )
 
-    def with_failures(self: Self, failures: Tuple[FailureInfo, ...]) -> Self:
+    def merge_state_failures(self: Self, state: TextState) -> Self:
+        return self.merge_failures(state.failures)
+
+    def merge_failures(self: Self, other: Tuple[FailureInfo, ...]) -> Self:
+        furthest_failure = (
+            max(info.index for info in self.failures) if self.failures else -1
+        )
+        result_failures: Tuple[FailureInfo, ...] = self.failures
+        for failure in other:
+            if furthest_failure < failure.index:
+                furthest_failure = failure.index
+                result_failures = (failure,)
+            elif furthest_failure == failure.index:
+                result_failures = (*result_failures, failure)
+
+        return self.progress(self.index, result_failures)
+
+    def replace_failures(self: Self, failures: Tuple[FailureInfo, ...]) -> Self:
         """Replace any current failures with new failures."""
         return self.progress(self.index, failures)
 
@@ -249,12 +255,13 @@ class ParseError(ValueError):
         the most text, along with a small window of context showing where parsing
         failed.
         """
+        furthest_state = self.state.at(max(failure.index for failure in self.failures))
         messages = sorted(f"'{info.message}'" for info in self.failures)
 
         if len(messages) == 1:
-            return f"failed with {messages[0]}\nFurthest parsing position:\n{self.state.context_display()}"
+            return f"failed with {messages[0]}\nFurthest parsing position:\n{furthest_state.context_display()}"
         else:
-            return f"failed with {', '.join(messages)}\nFurthest parsing position:\n{self.state.context_display()}"
+            return f"failed with {', '.join(messages)}\nFurthest parsing position:\n{furthest_state.context_display()}"
 
 
 @dataclass(**_slots)
@@ -299,7 +306,7 @@ class Result(Generic[T_co]):
                 mapped_info if info is self.failure_info else info for info in failures
             )
         return Result(
-            self.status, self.state.with_failures(failures), mapped_info, self.value
+            self.status, self.state.replace_failures(failures), mapped_info, self.value
         )
 
 
@@ -570,6 +577,99 @@ class Parser(Generic[T_co]):
                 lambda other_value: Success((*self_value, other_value))
             )
         )
+
+    # fmt: off
+    @overload
+    def seq(self: Parser[T1], /) -> Parser[Tuple[T1]]: ...
+
+    @overload
+    def seq(self: Parser[T1], parser_1: Parser[T2], /) -> Parser[Tuple[T1, T2]]: ...
+
+    @overload
+    def seq(
+        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], /
+    ) -> Parser[Tuple[T1, T2, T3]]: ...
+
+    @overload
+    def seq(
+        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], parser_3: Parser[T4], /
+    ) -> Parser[Tuple[T1, T2, T3, T4]]: ...
+
+    @overload
+    def seq(
+        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], parser_3: Parser[T4], parser_4: Parser[T5], /
+    ) -> Parser[Tuple[T1, T2, T3, T4, T5]]: ...
+
+    @overload
+    def seq(
+        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], parser_3: Parser[T4], parser_4: Parser[T5], parser_5: Parser[T6], /,
+    ) -> Parser[Tuple[T1, T2, T3, T4, T5, T6]]: ...
+
+    @overload
+    def seq(self: Parser[Any], *parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]: ...
+    # fmt: on
+    def seq(self: Parser[Any], *parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
+        r"""
+        A sequence of parsers are applied in order, and their results are stored in a tuple.
+
+        For example:
+
+        ```python
+        from parmancer import seq, regex
+
+        word = regex(r"[a-zA-Z]+")
+        number = regex(r"\d").map(int)
+
+        parser = seq(word, number, word, number, word | number)
+
+        assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
+        assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
+        ```
+
+        There are multiple related methods for combining parsers where the result is a
+        tuple: adding another parser result to the end of the tuple; concatenating two
+        tuple parsers together; unpacking the tuple result as args to a function, etc.
+
+        Here is an example which includes more tuple-related methods. Note that type
+        annotations are available throughout: a type checker can find the tuple type
+        for each parser, and it can tell that the `unpack` method is correctly unpacking
+        a `tuple[int, str, bool]` to a function which expects those types for its arguments.
+
+        ```python
+        from parmancer import digit, letter, seq, string
+
+
+        def demo(score: int, letter: str, truth: bool) -> str:
+            return str(score) if truth else letter
+
+
+        score = digit.map(int)
+        truth = string("T").result(True) | string("F").result(False)
+
+        # This parser's result is a tuple[int, str, bool]
+        params = seq(score, letter, truth)
+        assert params.parse("1aT") == (1, "a", True)
+
+        # That tuple can be unpacked as arguments for the demo function
+        parser = params.unpack(demo)
+
+        assert parser.parse("1aT") == "1"
+        assert parser.parse("2bF") == "b"
+
+        # Another parser which returns a tuple[int, int, int]
+        triple_score = score.pair(score).append(score)
+
+        assert triple_score.parse("123") == (1, 2, 3)
+        assert triple_score.parse("900") == (9, 0, 0)
+
+        # These tuple parsers can be concatenated in sequence by adding them
+        combined = params + triple_score
+
+        assert combined.parse("1aT234") == (1, "a", True, 2, 3, 4)
+        ```
+        """
+
+        return Sequence((self, *parsers))
 
     def list(self: Parser[T]) -> Parser[List[T]]:
         """Wrap the result in a list."""
@@ -1079,7 +1179,7 @@ class Choice(Parser[Any]):
     def __or__(self: Self, other: Parser[Any]) -> Parser[Any]:
         # If self or other are already Choice parsers and are not grouped, then
         # flatten their parsers rather than putting them in nested Choices
-        if isinstance(self, Choice) and not self.is_grouped:
+        if not self.is_grouped:
             self_parsers = self.parsers
         else:
             self_parsers = (self,)
@@ -1177,12 +1277,7 @@ def one_of(parser: Parser[Any], *parsers: Parser[Any]) -> Parser[Any]:
     assert date.parse("2001-02-03") == (2001, 2, 3)
 
     # This ambiguous input leads to a failure to parse
-    try:
-        date.parse("01-02-03")
-        parsed = True
-    except ParseError:
-        parsed = False
-    assert parsed is False
+    assert date.match("01-02-03").status is False
     ```
     """
     return OneOf((parser, *parsers))
@@ -1265,18 +1360,21 @@ class Range(Parser[List[T1]]):
                 if sep_result.status:
                     state = sep_result.state
                 else:
+                    state = state.merge_state_failures(sep_result.state)
                     separator_success = False
             # Parser
             if separator_success:
                 result = self.parser.parse_result(state)
                 # TODO test that failure aggregation works in this parser
+                # it doesn't/didn't
+                # TODO this might be fixed but idk, need more tests
                 if result.status:
                     state = result.state
                     values.append(result.value)
                     count += 1
                     continue
                 else:
-                    state = state_before_separator
+                    state = state_before_separator.merge_state_failures(result.state)
 
             if count >= self.min_count:
                 break
@@ -1401,8 +1499,64 @@ def seq(
 def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]: ...
 # fmt: on
 def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
-    """
+    r"""
     A sequence of parsers are applied in order, and their results are stored in a tuple.
+
+    For example:
+
+    ```python
+    from parmancer import seq, regex
+
+    word = regex(r"[a-zA-Z]+")
+    number = regex(r"\d").map(int)
+
+    parser = seq(word, number, word, number, word | number)
+
+    assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
+    assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
+    ```
+
+    There are multiple related methods for combining parsers where the result is a
+    tuple: adding another parser result to the end of the tuple; concatenating two
+    tuple parsers together; unpacking the tuple result as args to a function, etc.
+
+    Here is an example which includes more tuple-related methods. Note that type
+    annotations are available throughout: a type checker can find the tuple type
+    for each parser, and it can tell that the `unpack` method is correctly unpacking
+    a `tuple[int, str, bool]` to a function which expects those types for its arguments.
+
+    ```python
+    from parmancer import digit, letter, seq, string
+
+
+    def demo(score: int, letter: str, truth: bool) -> str:
+        return str(score) if truth else letter
+
+
+    score = digit.map(int)
+    truth = string("T").result(True) | string("F").result(False)
+
+    # This parser's result is a tuple[int, str, bool]
+    params = seq(score, letter, truth)
+    assert params.parse("1aT") == (1, "a", True)
+
+    # That tuple can be unpacked as arguments for the demo function
+    parser = params.unpack(demo)
+
+    assert parser.parse("1aT") == "1"
+    assert parser.parse("2bF") == "b"
+
+    # Another parser which returns a tuple[int, int, int]
+    triple_score = score.pair(score).append(score)
+
+    assert triple_score.parse("123") == (1, 2, 3)
+    assert triple_score.parse("900") == (9, 0, 0)
+
+    # These tuple parsers can be concatenated in sequence by adding them
+    combined = params + triple_score
+
+    assert combined.parse("1aT234") == (1, "a", True, 2, 3, 4)
+    ```
     """
 
     return Sequence(parsers)

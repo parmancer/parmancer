@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 
 import pytest
+
 from parmancer import ParseError, any_char, digit, gather, regex, take, whitespace
 
 
 def test_gate() -> None:
-    """Gate checks a condition be used to check a condition"""
+    """Gate checks a condition as a bool function of the current result"""
     parser = any_char.gate(lambda x: x == "a")
     # The parsed value is still the result - not the bool result of the gate
     assert parser.parse("a") == "a"

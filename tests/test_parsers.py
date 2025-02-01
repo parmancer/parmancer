@@ -1,7 +1,7 @@
 import enum
 import re
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any
 
 import pytest
 
@@ -191,11 +191,32 @@ def test_combine() -> None:
 
 
 def test_combine_mixed_types() -> None:
-    def demo(a: int, b: str, c: bool) -> Tuple[int, str, bool]:
-        return (a, b, c)
+    def demo(score: int, letter: str, truth: bool) -> str:
+        return str(score) if truth else letter
 
-    parser = digit.map(int).pair(letter).append(digit.map(bool)).unpack(demo)
-    assert parser.parse("1A1") == (1, "A", True)
+    score = digit.map(int)
+    truth = string("T").result(True) | string("F").result(False)
+
+    # This parser's result is a tuple[int, str, bool]
+    params = seq(score, letter, truth)
+    assert params.parse("1aT") == (1, "a", True)
+
+    # That tuple can be unpacked as arguments for the demo function
+    parser = params.unpack(demo)
+
+    assert parser.parse("1aT") == "1"
+    assert parser.parse("2bF") == "b"
+
+    # Another parser which returns a tuple[int, int, int]
+    triple_score = score.pair(score).append(score)
+
+    assert triple_score.parse("123") == (1, 2, 3)
+    assert triple_score.parse("900") == (9, 0, 0)
+
+    # These tuple parsers can be concatenated in sequence by adding them
+    combined = params + triple_score
+
+    assert combined.parse("1aT234") == (1, "a", True, 2, 3, 4)
 
 
 def test_state_parser() -> None:
@@ -579,11 +600,20 @@ def test_add_numerics() -> None:
 
 
 def test_seq() -> None:
-    a = regex("a")
-    b = regex("b")
-    num = regex(r"[\d]").map(int)
+    word = regex(r"[a-zA-Z]+")
+    number = regex(r"\d").map(int)
 
-    parser = seq(a, num, b, num, a | num)
+    parser = seq(word, number, word, number, word | number)
+
+    assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
+    assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
+
+
+def test_seq_method() -> None:
+    word = regex(r"[a-zA-Z]+")
+    number = regex(r"\d").map(int)
+
+    parser = word.seq(number, word, number, word | number)
 
     assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
     assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)

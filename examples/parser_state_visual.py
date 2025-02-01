@@ -59,8 +59,8 @@ from typing import Any, List, Tuple
 
 from typing_extensions import Self, TypeVar
 
-from examples.dataclass_parser_demo import File, text
-from parmancer import Result, TextState, gather
+from examples.json import json_value
+from parmancer import Result, TextState
 
 _T = TypeVar("_T")
 
@@ -258,6 +258,8 @@ def display_parser_state(state: TextState, value: Any, tree: Node) -> None:
         print("-" * 80)
         print(state.context_display(), end="")
         print("-" * 80)
+        newline = "\n"
+        print(f"Failures: {newline.join(str(x) for x in state.failures)}")
         input()
     finally:
         del call_stack
@@ -278,4 +280,16 @@ class StepVisualizer(TextState):
 
 if __name__ == "__main__":
     # Running this file will show the parser state each time a successful parser is found
-    gather(File).parse(text, state_handler=StepVisualizer)
+    # gather(File).parse(text, state_handler=StepVisualizer)
+
+    json_value.parse(
+        r"""
+    {
+        "a": "b",
+        "c": {"d": 1.2},
+        "e": [true, false{],
+        "f": "\n"
+    }
+    """,
+        state_handler=StepVisualizer,
+    )

@@ -63,9 +63,7 @@ def test_json() -> None:
     result = json_value.parse(
         r"""
     {
-        "a": "b",
-        "c": {"d": 1.2},
-        "e": [true, false],
+        "x":1,"e": [true, false{],
         "f": "\n"
     }
     """
