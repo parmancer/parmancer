@@ -1,6 +1,6 @@
 [project]
 name = "parmancer"
-version = "0.1.1"
+version = "0.2.0"
 description = "Parse structured data from text using parser combinators"
 authors = [{ name = "Rob Hornby", email = "robjhornby@gmail.com" }]
 requires-python = ">=3.8"
