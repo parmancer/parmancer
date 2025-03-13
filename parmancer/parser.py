@@ -70,6 +70,7 @@ __all__ = [
     "LookAhead",
     "Map",
     "MapFailure",
+    "NamedParser",
     "OneOf",
     "ParseError",
     "Range",
@@ -379,7 +380,17 @@ class Parser(Generic[T_co]):
 
     def __or__(self: Parser[T1], other: Parser[T2]) -> Parser[T1 | T2]:
         """Match either self or other, returning the first parser which succeeds."""
-        return Choice(parsers=(self, other))
+        if isinstance(self, Choice):
+            self_parsers = self.parsers
+        else:
+            self_parsers = (self,)
+
+        if isinstance(other, Choice):
+            other_parsers = other.parsers
+        else:
+            other_parsers = (other,)
+
+        return Choice((*self_parsers, *other_parsers))
 
     def many(
         self: Parser[T_co],
@@ -401,7 +412,7 @@ class Parser(Generic[T_co]):
         :param count: Number of times to apply the parser
         :return: A new parser which will repeat the previous parser ``count`` times
         """
-        return self.many(min_count=count, max_count=count).set_name(f"times({count})")
+        return self.many(min_count=count, max_count=count).with_name(f"times({count})")
 
     def at_most(self: Parser[T_co], count: int) -> Parser[List[T_co]]:
         """Repeat the parser at most ``count`` times.
@@ -409,7 +420,7 @@ class Parser(Generic[T_co]):
         :param count: Maximum number of repeats
         :return: A new parser which will repeat the previous parser up to ``count`` times
         """
-        return self.many(0, count).set_name(f"at_most({count})")
+        return self.many(0, count).with_name(f"at_most({count})")
 
     def at_least(self: Parser[T_co], count: int) -> Parser[List[T_co]]:
         """Repeat the parser at least ``count`` times.
@@ -417,7 +428,7 @@ class Parser(Generic[T_co]):
         :param count: Minimum number of repeats
         :return: A new parser which will repeat the previous parser at least ``count`` times
         """
-        return self.many(min_count=count, max_count=float("inf")).set_name(
+        return self.many(min_count=count, max_count=float("inf")).with_name(
             f"at_least({count})"
         )
 
@@ -530,28 +541,9 @@ class Parser(Generic[T_co]):
         :return: An updated parser which will unpack its result into ``transform_fn``
             to produce a new result
         """
-        return self.bind(lambda value: Success(transform_fn(*value))).set_name("Unpack")
-
-    def __and__(self: Parser[T1], other: Parser[T2]) -> Parser[Tuple[T1, T2]]:
-        """Combine two parsers in sequence, combining their result values into a tuple
-        of the two values.
-        Given parsers ``A`` and ``B``, this method is used as ``A & B``.
-
-        :param other: The other parser to combine with this parser in sequence
-        :return: A combined parser which runs this parser followed by ``other`` and
-            combines their results into a 2-tuple
-        """
-        return Sequence(parsers=(self, other))
-
-    def pair(self: Parser[T1], other: Parser[T2]) -> Parser[Tuple[T1, T2]]:
-        """Combine two parsers in sequence, combining their result values into a tuple
-        of the two values.
-
-        :param other: The other parser to combine with this parser in sequence
-        :return: A combined parser which runs this parser followed by ``other`` and
-            combines their results into a 2-tuple
-        """
-        return Sequence(parsers=(self, other))
+        return self.bind(lambda value: Success(transform_fn(*value))).with_name(
+            "unpack"
+        )
 
     def tuple(self: Parser[T]) -> Parser[Tuple[T]]:
         """Wrap the result in a tuple of length 1."""
@@ -577,99 +569,6 @@ class Parser(Generic[T_co]):
                 lambda other_value: Success((*self_value, other_value))
             )
         )
-
-    # fmt: off
-    @overload
-    def seq(self: Parser[T1], /) -> Parser[Tuple[T1]]: ...
-
-    @overload
-    def seq(self: Parser[T1], parser_1: Parser[T2], /) -> Parser[Tuple[T1, T2]]: ...
-
-    @overload
-    def seq(
-        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], /
-    ) -> Parser[Tuple[T1, T2, T3]]: ...
-
-    @overload
-    def seq(
-        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], parser_3: Parser[T4], /
-    ) -> Parser[Tuple[T1, T2, T3, T4]]: ...
-
-    @overload
-    def seq(
-        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], parser_3: Parser[T4], parser_4: Parser[T5], /
-    ) -> Parser[Tuple[T1, T2, T3, T4, T5]]: ...
-
-    @overload
-    def seq(
-        self: Parser[T1], parser_1: Parser[T2], parser_2: Parser[T3], parser_3: Parser[T4], parser_4: Parser[T5], parser_5: Parser[T6], /,
-    ) -> Parser[Tuple[T1, T2, T3, T4, T5, T6]]: ...
-
-    @overload
-    def seq(self: Parser[Any], *parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]: ...
-    # fmt: on
-    def seq(self: Parser[Any], *parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
-        r"""
-        A sequence of parsers are applied in order, and their results are stored in a tuple.
-
-        For example:
-
-        ```python
-        from parmancer import seq, regex
-
-        word = regex(r"[a-zA-Z]+")
-        number = regex(r"\d").map(int)
-
-        parser = seq(word, number, word, number, word | number)
-
-        assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
-        assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
-        ```
-
-        There are multiple related methods for combining parsers where the result is a
-        tuple: adding another parser result to the end of the tuple; concatenating two
-        tuple parsers together; unpacking the tuple result as args to a function, etc.
-
-        Here is an example which includes more tuple-related methods. Note that type
-        annotations are available throughout: a type checker can find the tuple type
-        for each parser, and it can tell that the `unpack` method is correctly unpacking
-        a `tuple[int, str, bool]` to a function which expects those types for its arguments.
-
-        ```python
-        from parmancer import digit, letter, seq, string
-
-
-        def demo(score: int, letter: str, truth: bool) -> str:
-            return str(score) if truth else letter
-
-
-        score = digit.map(int)
-        truth = string("T").result(True) | string("F").result(False)
-
-        # This parser's result is a tuple[int, str, bool]
-        params = seq(score, letter, truth)
-        assert params.parse("1aT") == (1, "a", True)
-
-        # That tuple can be unpacked as arguments for the demo function
-        parser = params.unpack(demo)
-
-        assert parser.parse("1aT") == "1"
-        assert parser.parse("2bF") == "b"
-
-        # Another parser which returns a tuple[int, int, int]
-        triple_score = score.pair(score).append(score)
-
-        assert triple_score.parse("123") == (1, 2, 3)
-        assert triple_score.parse("900") == (9, 0, 0)
-
-        # These tuple parsers can be concatenated in sequence by adding them
-        combined = params + triple_score
-
-        assert combined.parse("1aT234") == (1, "a", True, 2, 3, 4)
-        ```
-        """
-
-        return Sequence((self, *parsers))
 
     def list(self: Parser[T]) -> Parser[List[T]]:
         """Wrap the result in a list."""
@@ -764,7 +663,11 @@ class Parser(Generic[T_co]):
 
     def __add__(self: Parser[Any], other: Parser[Any]) -> Parser[Any]:
         """Run this parser followed by ``other``, and add the result values together."""
-        return (self & other).map(lambda x: x[0] + x[1], "Add")
+        if isinstance(self, Sequence) and isinstance(other, Sequence):
+            # Merge two sequences into one
+            return Sequence((*self.parsers, *other.parsers))
+
+        return seq(self, other).map(lambda x: x[0] + x[1], "Add")
 
     def concat(
         self: Parser[Iterable[SupportsSelfAdd[T]]],
@@ -858,10 +761,9 @@ class Parser(Generic[T_co]):
         """
         return Choice((self, success(default)))
 
-    def set_name(self, description: str) -> Parser[T_co]:
+    def with_name(self, name: str) -> Parser[T_co]:
         """Set the name of the parser."""
-        self.name: str = description
-        return self
+        return NamedParser(name=name, parser=self)
 
     def breakpoint(self) -> Parser[T_co]:
         """Insert a breakpoint before the current parser runs, for debugging."""
@@ -1145,20 +1047,6 @@ class Choice(Parser[Any]):
 
     name = "Choice"
     parsers: Tuple[Parser[Any], ...]
-    is_grouped: bool = False
-    """
-    Whether the Choice is a group which should not be broken up. For example, when
-    or-ing two Choices A and B together, you can create a new Choice C in
-    different ways:
-
-    - When ``A.is_grouped`` is True: ``C = Choice(parsers=(A, B))``  which keeps A's
-    parsers grouped together and nested.
-    - When ``A.is_grouped`` is False: ``C = Choice(parsers=(*A.parsers, B))`` which
-    un-nests A's subparsers, un-grouping them and losing any name if it had one.
-
-    By default, Choices are not grouped unless they have a custom name set using
-    ``.set_name``.
-    """
 
     def __post_init__(self) -> None:
         if not self.parsers:
@@ -1171,25 +1059,6 @@ class Choice(Parser[Any]):
                 return result
             state = result.state.at(state.index)
         return result  # pyright: ignore
-
-    def set_name(self: Self, description: str) -> Parser[Tuple[Any, ...]]:
-        self.is_grouped = True
-        return super().set_name(description)
-
-    def __or__(self: Self, other: Parser[Any]) -> Parser[Any]:
-        # If self or other are already Choice parsers and are not grouped, then
-        # flatten their parsers rather than putting them in nested Choices
-        if not self.is_grouped:
-            self_parsers = self.parsers
-        else:
-            self_parsers = (self,)
-
-        if isinstance(other, Choice) and not other.is_grouped:
-            other_parsers = other.parsers
-        else:
-            other_parsers = (other,)
-
-        return Choice((*self_parsers, *other_parsers))
 
 
 @dataclass
@@ -1547,7 +1416,7 @@ def seq(*parsers: Parser[Any]) -> Parser[Tuple[Any, ...]]:
     assert parser.parse("2bF") == "b"
 
     # Another parser which returns a tuple[int, int, int]
-    triple_score = score.pair(score).append(score)
+    triple_score = seq(score, score, score)
 
     assert triple_score.parse("123") == (1, 2, 3)
     assert triple_score.parse("900") == (9, 0, 0)
@@ -1572,20 +1441,6 @@ class Sequence(Parser[Tuple[Any, ...]]):
 
     name = "sequence"
     parsers: Tuple[Parser[Any], ...]
-    is_grouped: bool = False
-    """
-    Whether the sequence is a group which should not be broken up. For example, when
-    adding two sequences A and B together, you can create a new sequence C in
-    different ways:
-
-    - When ``A.is_grouped`` is True: ``C(parsers=(A, B))``  which keeps A's parsers
-    grouped together and nested.
-    - When ``A.is_grouped`` is False: ``C(parsers=(*A.parsers, B))`` which
-    un-nests A's subparsers, un-grouping them and losing any name if it had one.
-
-    By default, sequences are not grouped unless they have a custom name set using
-    ``.set_name``.
-    """
 
     def parse_result(self, state: TextState) -> Result[Tuple[Any, ...]]:
         if not self.parsers:
@@ -1599,22 +1454,12 @@ class Sequence(Parser[Tuple[Any, ...]]):
             state = result.state
         return state.success(tuple(values))
 
-    def set_name(self, description: str) -> Parser[Tuple[Any, ...]]:
-        self.is_grouped = True
-        return super().set_name(description)
-
-    def __add__(self: Self, other: Parser[Any]) -> Parser[Any]:
-        if isinstance(self, Sequence) and isinstance(other, Sequence):
-            # Merge the two sequences into one, unless they have non-default names
-            self_parsers: Tuple[Parser[Any], ...] = (self,)
-            other_parsers: Tuple[Parser[Any], ...] = (other,)
-            if not self.is_grouped:
-                self_parsers = self.parsers
-            if not other.is_grouped:
-                other_parsers = other.parsers
-            return Sequence((*self_parsers, *other_parsers))
-
-        return super().__add__(other)
+    def append(self: Self, other: Parser[Any]) -> Parser[Any]:
+        """
+        Append the result of another parser to the end of the current parser's result tuple
+        """
+        # TODO is this needed
+        return Sequence((*self.parsers, other))
 
 
 @dataclass
@@ -1936,7 +1781,7 @@ def char_from(string: str) -> Parser[str]:
     assert char_from("abc").match("d").status is False
     ```
     """
-    return any_char.gate(lambda c: c in string).set_name(f"[{string}]")
+    return any_char.gate(lambda c: c in string).with_name(f"[{string}]")
 
 
 @dataclass
@@ -1979,3 +1824,16 @@ def forward_parser(parser_iterator: Callable[[], Iterator[Parser[T]]]) -> Parser
 
     """
     return ForwardParser(parser_iterator=parser_iterator)
+
+
+@dataclass
+class NamedParser(Parser[T]):
+    """A forward-defined parser."""
+
+    parser: Parser[T]
+    name: str
+
+    def parse_result(self, state: TextState) -> Result[T]:
+        return self.parser.parse_result(state).map_failure(
+            lambda f: FailureInfo(f.index, self.name)
+        )

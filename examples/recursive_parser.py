@@ -1,6 +1,6 @@
 from typing import Iterator, List, Tuple, Union
 
-from parmancer import Parser, forward_parser, regex, string
+from parmancer import Parser, forward_parser, regex, seq, string
 
 RT = Union[int, List["RT"]]
 
@@ -67,7 +67,7 @@ def test_indirect_recursive_parser() -> None:
 
     # Note this example is contrived, it could be simplified into fewer parsers.
     first = string("(") >> _second << string(")")
-    second = digits | letters & _third
+    second = digits | seq(letters, _third)
     third = string(">") >> first
 
     result = third.parse(">(first>(second>(3)))")

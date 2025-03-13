@@ -200,11 +200,11 @@ r"""1 or more spaces: `regex(r"\s+")`"""
 padding: Parser[str] = regex(r"\s*")
 r"""0 or more spaces: `regex(r"\s*")`"""
 
-letter: Parser[str] = any_char.gate(lambda c: c.isalpha()).set_name("Letter")
+letter: Parser[str] = any_char.gate(lambda c: c.isalpha()).with_name("Letter")
 r"""A character ``c`` for which ``c.isalpha()`` is true."""
 
-digit: Parser[str] = regex(r"[0-9]").set_name("Digit")
+digit: Parser[str] = regex(r"[0-9]").with_name("Digit")
 """A numeric digit."""
 
-digits: Parser[str] = regex(r"[0-9]+").set_name("Digits")
+digits: Parser[str] = regex(r"[0-9]+").with_name("Digits")
 """Any number of numeric digits in a row."""

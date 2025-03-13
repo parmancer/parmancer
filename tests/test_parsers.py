@@ -15,6 +15,8 @@ from parmancer.parser import (
     Choice,
     FailureInfo,
     KeepOne,
+    Map,
+    NamedParser,
     OneOf,
     ParseError,
     Parser,
@@ -176,17 +178,17 @@ def test_map() -> None:
 
 
 def test_and() -> None:
-    parser = digit & letter
+    parser = seq(digit, letter)
     assert parser.parse("1A") == ("1", "A")
 
 
 def test_append() -> None:
-    parser = digit.pair(letter).append(letter)
+    parser = seq(digit, letter).append(letter)
     assert parser.parse("1AB") == ("1", "A", "B")
 
 
 def test_combine() -> None:
-    parser = digit.pair(letter).append(letter).unpack(lambda a, b, c: (c + b + a))
+    parser = seq(digit, letter, letter).unpack(lambda a, b, c: (c + b + a))
     assert parser.parse("1AB") == "BA1"
 
 
@@ -208,7 +210,7 @@ def test_combine_mixed_types() -> None:
     assert parser.parse("2bF") == "b"
 
     # Another parser which returns a tuple[int, int, int]
-    triple_score = score.pair(score).append(score)
+    triple_score = seq(score, score, score)
 
     assert triple_score.parse("123") == (1, 2, 3)
     assert triple_score.parse("900") == (9, 0, 0)
@@ -288,13 +290,11 @@ def test_nested_ors_are_flattened() -> None:
 
 
 def test_nested_ors_are_not_flattened_if_grouped() -> None:
-    first = (string("a") | string("b")).set_name("Custom name")
+    first = (string("a") | string("b")).with_name("Custom name")
     second = string("c") | string("d")
     third = first | second
-    assert isinstance(first, Choice)
+    assert isinstance(first, NamedParser)
     assert isinstance(second, Choice)
-    assert first.is_grouped
-    assert not second.is_grouped
     assert isinstance(third, Choice)
     # `first` is kept whole rather than being flattened to its `.parsers`
     assert third.parsers == (first, *second.parsers)
@@ -519,7 +519,7 @@ def test_add_tuple() -> None:
     """This test code is for checking that pylance gives no type errors"""
     letter_tuple = letter.tuple()
     int_parser = regex(r"\d").map(int)
-    two_int_parser = int_parser & int_parser
+    two_int_parser = seq(int_parser, int_parser)
     barcode = letter_tuple + two_int_parser
 
     def my_foo(first: str, second: int, third: int) -> str:
@@ -535,7 +535,7 @@ def test_add_too_long_tuple_uniform_types() -> None:
     letter_tuple = letter.tuple()
     int_parser = regex(r"\d")
     six_int_parser = (
-        (int_parser & int_parser)
+        seq(int_parser, int_parser)
         .append(int_parser)
         .append(int_parser)
         .append(int_parser)
@@ -555,7 +555,7 @@ def test_add_too_long_tuple_different_types() -> None:
     """This test code is for checking that pylance gives no type errors"""
     int_parser = regex(r"\d").map(int)
     six_int_parser = (
-        (int_parser & int_parser)
+        seq(int_parser, int_parser)
         .append(int_parser)
         .append(int_parser)
         .append(int_parser)
@@ -613,15 +613,15 @@ def test_seq_method() -> None:
     word = regex(r"[a-zA-Z]+")
     number = regex(r"\d").map(int)
 
-    parser = word.seq(number, word, number, word | number)
+    parser = seq(word, number, word, number, word | number)
 
     assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
     assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
 
 
 def test_nested_sequences_are_flattened() -> None:
-    first = string("a") & string("b")
-    second = string("c") & string("d")
+    first = seq(string("a"), string("b"))
+    second = seq(string("c"), string("d"))
     third = first + second
     assert isinstance(first, Sequence)
     assert isinstance(second, Sequence)
@@ -630,15 +630,14 @@ def test_nested_sequences_are_flattened() -> None:
 
 
 def test_nested_sequences_are_not_flattened_when_grouped() -> None:
-    first = (string("a") & string("b")).set_name("Custom name")
-    second = string("c") & string("d")
+    first = seq(string("a"), string("b")).with_name("Custom name")
+    second = seq(string("c"), string("d"))
     third = first + second
-    assert isinstance(first, Sequence)
+    assert isinstance(first, NamedParser)
     assert isinstance(second, Sequence)
-    assert first.is_grouped
-    assert not second.is_grouped
-    assert isinstance(third, Sequence)
-    assert third.parsers == (first, *second.parsers)
+    assert isinstance(third, Map)
+    assert isinstance(third.parser, Sequence)
+    assert third.parser.parsers == (first, second)
 
 
 def test_add_tuples_like_seq() -> None:
@@ -651,6 +650,19 @@ def test_add_tuples_like_seq() -> None:
 
     assert parser.parse("a1b2a") == ("a", 1, "b", 2, "a")
     assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
+
+
+# def test_add_sequences() -> None:
+#     """Sequences have a custom __add__"""
+#     a = seq(string("a"), string("b"))
+#     b = seq(string("c"))
+
+#     a_mod = a.optional()
+
+#     parser = a_mod + b
+
+#     assert parser.parse("abc") == ("a", "b", "c")
+#     assert parser.parse("c") == ("c")
 
 
 def test_add_custom_addable_types() -> None:
@@ -706,12 +718,12 @@ def test_concat_list_of_str() -> None:
 
 
 def test_concat_tuple() -> None:
-    parser = (string("a") & string("b")).concat()
+    parser = seq(string("a"), string("b")).concat()
     assert parser.parse("ab") == "ab"
 
 
 def test_concat_heterogeneous_addable_tuple() -> None:
-    int_float_parser = success(1) & success(2.0)
+    int_float_parser = seq(success(1), success(2.0))
     # int and float can be added, resulting in a float
     parser = int_float_parser.concat()
     assert parser.parse("") == 3.0
@@ -750,13 +762,13 @@ def test_concat_custom_heterogeneous_addable_tuple() -> None:
 
 def test_concat_invalid_tuple() -> None:
     # Note this also fails pyright static type checking: str and int aren't addable
-    parser: Parser[Any] = (string("a") & success(1)).concat()  # pyright: ignore
+    parser: Parser[Any] = seq(string("a"), success(1)).concat()  # pyright: ignore
     with pytest.raises(TypeError):
         parser.parse("a1")  # pyright: ignore
 
 
 def test_concat_list_of_tuples() -> None:
-    parser = (string("a") & string("b")).many().concat()
+    parser = seq(string("a"), string("b")).many().concat()
     assert parser.parse("abab") == ("a", "b", "a", "b")
 
 
@@ -866,3 +878,32 @@ class TestOneOf:
         # Act and assert raises
         with pytest.raises(ParseError, match="Exactly one"):
             parser.parse("a")
+
+
+def test_with_name() -> None:
+    """The name of a parser can be set"""
+    # Arrange
+    parser = string("abc")
+
+    # Act
+    parser = parser.with_name("custom")
+
+    # Assert
+    assert parser.name == "custom"
+
+
+def test_with_name_multiple() -> None:
+    """The same kind of parser can have multiple names"""
+    # Arrange
+    a = string("abc")
+    b = string("abc")
+
+    # Act
+    a = a.with_name("a")
+    b = b.with_name("b")
+    c: Parser[str] = b.with_name("new")
+
+    # Assert
+    assert a.name == "a"
+    assert b.name == "b"
+    assert c.name == "new"

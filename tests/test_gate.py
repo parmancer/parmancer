@@ -32,7 +32,7 @@ def test_gate_on_dataclass() -> None:
         value: int = take(regex(r"\d+").map(int))
 
     parser = (
-        gather(Antique).gate(lambda x: x.value > 10).set_name("Value must be over 10")
+        gather(Antique).gate(lambda x: x.value > 10).with_name("Value must be over 10")
     )
 
     assert parser.parse("Trident 50") == Antique("Trident", 50)
@@ -42,7 +42,7 @@ def test_gate_on_dataclass() -> None:
 
 def test_gate_can_be_used_for_logic_flow() -> None:
     """Gate means alternative parsers can be chosen based on the value of a parser"""
-    parser = any_char.times(3).set_name("Three characters").gate(
+    parser = any_char.times(3).with_name("Three characters").gate(
         lambda x: x == sorted(x)
     ) | regex(r"\d+").map(int)
     # The parsed value is still the result - not the bool result of the gate
