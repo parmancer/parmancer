@@ -543,12 +543,12 @@ def test_add_too_long_tuple_uniform_types() -> None:
     )
     barcode = letter_tuple + six_int_parser
 
-    def my_bar(first: str, *second: str) -> str:
-        return first + "-".join(second)
+    def my_bar(*first: str) -> str:
+        return "-".join(first)
 
     foo_parser = barcode.unpack(my_bar)
 
-    assert foo_parser.parse("a123456") == "a1-2-3-4-5-6"
+    assert foo_parser.parse("a123456") == "a-1-2-3-4-5-6"
 
 
 def test_add_too_long_tuple_different_types() -> None:
@@ -575,7 +575,8 @@ def test_add_list() -> None:
     """This test code is for checking that pylance gives no type errors"""
     letters = letter.many()
     number_chars = regex(r"\d").many()
-    letters_numbers = letters + number_chars
+    # Mypy can't handle this
+    letters_numbers = letters + number_chars  # type: ignore[operator,var-annotated]
 
     assert letters_numbers.parse("ab12") == ["a", "b", "1", "2"]
 
@@ -594,7 +595,8 @@ def test_add_unaddable_types() -> None:
 
 def test_add_numerics() -> None:
     digit = regex(r"\d")
-    numeric_parser = digit.map(float) + digit.map(int)
+    # Mypy can't handle this
+    numeric_parser = digit.map(float) + digit.map(int)  # type: ignore[operator,var-annotated]
 
     assert numeric_parser.parse("12") == 3.0
 
@@ -619,7 +621,8 @@ def test_seq_method() -> None:
     assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
 
 
-def test_nested_sequences_are_flattened() -> None:
+def test_nested_sequences_are_combined() -> None:
+    """Adding two sequences will lead to a flattened Sequence"""
     first = seq(string("a"), string("b"))
     second = seq(string("c"), string("d"))
     third = first + second
@@ -627,6 +630,15 @@ def test_nested_sequences_are_flattened() -> None:
     assert isinstance(second, Sequence)
     assert isinstance(third, Sequence)
     assert third.parsers == (*first.parsers, *second.parsers)
+    assert third.parse("abcd") == ("a", "b", "c", "d")
+
+
+def test_nested_sequences_are_flattened() -> None:
+    """Nested sequences lead to nested tuples"""
+    first = seq(string("a"), string("b"))
+    second = seq(string("c"), string("d"))
+    third = seq(first, second)
+    assert third.parse("abcd") == (("a", "b"), ("c", "d"))
 
 
 def test_nested_sequences_are_not_flattened_when_grouped() -> None:
@@ -652,19 +664,6 @@ def test_add_tuples_like_seq() -> None:
     assert parser.parse("a1b23") == ("a", 1, "b", 2, 3)
 
 
-# def test_add_sequences() -> None:
-#     """Sequences have a custom __add__"""
-#     a = seq(string("a"), string("b"))
-#     b = seq(string("c"))
-
-#     a_mod = a.optional()
-
-#     parser = a_mod + b
-
-#     assert parser.parse("abc") == ("a", "b", "c")
-#     assert parser.parse("c") == ("c")
-
-
 def test_add_custom_addable_types() -> None:
     """Adding parsers works for anything which implements __add__"""
     int_parser = regex(r"\d+").map(int) << padding
@@ -685,7 +684,8 @@ def test_add_custom_addable_types() -> None:
     a_parser = gather(A)
 
     # The parser type is Parser[B], inferred from the type of A + int
-    parser = a_parser + int_parser
+    # Mypy can't handle this
+    parser = a_parser + int_parser  # type: ignore[operator,var-annotated]
     parser_backwards = int_parser + a_parser
     assert parser.parse("1 2") == B(12)
     assert parser_backwards.parse("1 2") == B(21)
@@ -768,7 +768,8 @@ def test_concat_invalid_tuple() -> None:
 
 
 def test_concat_list_of_tuples() -> None:
-    parser = seq(string("a"), string("b")).many().concat()
+    # An update to pyright means this doesn't type check in v1.1.396
+    parser = seq(string("a"), string("b")).many().concat()  # pyright: ignore
     assert parser.parse("abab") == ("a", "b", "a", "b")
 
 
@@ -780,7 +781,8 @@ def test_concat_list_of_ints() -> None:
 
 def test_concat_list_of_lists() -> None:
     """A list of lists is concatenated to a list."""
-    parser = digit.many().sep_by(string("-")).concat()
+    # An update to pyright means this doesn't type check in v1.1.396
+    parser = digit.many().sep_by(string("-")).concat()  # pyright: ignore
     assert parser.parse("12-34-9") == ["1", "2", "3", "4", "9"]
 
 

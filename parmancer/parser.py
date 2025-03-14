@@ -366,7 +366,7 @@ class Parser(Generic[T_co]):
 
         Override this method in subclasses to create a specific parser.
         """
-        return NotImplemented
+        return NotImplemented  # type: ignore[no-any-return]
 
     @overload
     def result(self: Parser[Any], value: AnyLiteral) -> Parser[AnyLiteral]: ...
@@ -574,37 +574,31 @@ class Parser(Generic[T_co]):
         """Wrap the result in a list."""
         return self.map(lambda value: [value], map_name="Wrap list")
 
+    # Unpack first arg
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[Ts]]],
+        self: Parser[Tuple[Unpack[Ts]]],
         other: Parser[Tuple[T1]],
-    ) -> Parser[Tuple[T, Unpack[Ts], T1]]: ...
-
-    @overload  # type: ignore[overload-overlap]
-    def __add__(
-        self: Parser[Tuple[T]],
-        other: Parser[Tuple[T1, Unpack[Ts]]],
-    ) -> Parser[Tuple[T, T1, Unpack[Ts]]]: ...
+    ) -> Parser[Tuple[Unpack[Ts], T1]]: ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[Ts]]],
+        self: Parser[Tuple[Unpack[Ts]]],
         other: Parser[Tuple[T1, T2]],
-    ) -> Parser[Tuple[T, Unpack[Ts], T1, T2]]: ...
+    ) -> Parser[Tuple[Unpack[Ts], T1, T2]]: ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[Ts]]],
+        self: Parser[Tuple[Unpack[Ts]]],
         other: Parser[Tuple[T1, T2, T3]],
-    ) -> Parser[Tuple[T, Unpack[Ts], T1, T2, T3]]: ...
+    ) -> Parser[Tuple[Unpack[Ts], T1, T2, T3]]: ...
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[Ts]]],
+        self: Parser[Tuple[Unpack[Ts]]],
         other: Parser[Tuple[T1, T2, T3, T4]],
     ) -> Parser[
         Tuple[
-            T,
             Unpack[Ts],
             T1,
             T2,
@@ -615,11 +609,10 @@ class Parser(Generic[T_co]):
 
     @overload
     def __add__(
-        self: Parser[Tuple[T, Unpack[Ts]]],
+        self: Parser[Tuple[Unpack[Ts]]],
         other: Parser[Tuple[T1, T2, T3, T4, T5]],
     ) -> Parser[
         Tuple[
-            T,
             Unpack[Ts],
             T1,
             T2,
@@ -629,14 +622,12 @@ class Parser(Generic[T_co]):
         ]
     ]: ...
 
-    # This covers tuples with more elements than the above overloads support
-    # ``self`` and ``other`` are tuples of the same homogeneous type
+    # Cover the rest of cases which can't return a homogeneous tuple
     @overload
     def __add__(
-        self: Parser[Tuple[T, ...]], other: Parser[Tuple[T, ...]]
-    ) -> Parser[Tuple[T, ...]]: ...
+        self: Parser[Tuple[T1, ...]], other: Parser[Tuple[T2, ...]]
+    ) -> Parser[Tuple[T1 | T2, ...]]: ...
 
-    # Cover the rest of cases which can't return a homogeneous tuple
     @overload
     def __add__(
         self: Parser[Tuple[Any, ...]], other: Parser[Tuple[Any, ...]]
@@ -646,11 +637,13 @@ class Parser(Generic[T_co]):
     @overload
     def __add__(self: Parser[LiteralString], other: Parser[str]) -> Parser[str]: ...
 
-    # Mypy thinks this is unreachable; pyright thinks it is reachable
-    @overload  # type: ignore[misc]
-    def __add__(self: Parser[str], other: Parser[LiteralString]) -> Parser[str]: ...
+    # Mypy calls this unreachable; pyright calls it reachable
+    @overload
+    def __add__(  # type: ignore[overload-cannot-match]
+        self: Parser[str], other: Parser[LiteralString]
+    ) -> Parser[str]: ...
 
-    # Addable parsers which return the same type
+    # SupportsAdd compatible
     @overload
     def __add__(
         self: Parser[SupportsAdd[Addable, AddResult]], other: Parser[Addable]
