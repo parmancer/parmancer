@@ -1,7 +1,7 @@
 r'''
 Parse text into **structured data types** with **parser combinators**.
 
-Parmancer has rich **type annotations** for parsers and intermediate results.
+Parmancer has **type annotations** for parsers and intermediate results.
 Using a type checker with Parmancer gives immediate feedback about parser result types, and gives type errors when creating invalid combinations of parsers.
 
 ## Installation
@@ -26,6 +26,8 @@ adder = digits.map(int).sep_by(string(" + ")).map(sum)
 
 # The `greeting` and `adder` parsers are combined in sequence
 parser = seq(greeting, adder)
+# The type of `parser` is `Parser[tuple[str, int]]`, meaning it's a parser which
+# will return a `tuple[str, int]` when it parses text.
 
 # Now the parser can be applied to the example string, or other strings following the
 # same pattern.
@@ -119,7 +121,7 @@ For example, a dataclass field of type `str` cannot be associated with a parser 
 
 - **Simple construction**: Simple parsers can be defined concisely and independently, and then combined with short, understandable **combinator** functions and methods which replace the usual branching and sequencing boilerplate of parsers written in vanilla Python.
 - **Modularity, testability, maintainability**: Each intermediate parser component is a complete parser in itself, which means it can be understood, tested and modified in isolation from the rest of the parser.
-- **Regular Python**: Some other approaches to parsing use a separate grammar definition outside of Python which goes through a compilation or generation step before it can be used in Python, which can lead to black boxes. Parmancer parsers are defined as Python code rather than a separate grammar syntax.
+- **Regular Python**: Some approaches to parsing use a separate grammar definition outside of Python which goes through a compilation or generation step before it can be used in Python, which can lead to black boxes. Parmancer parsers are defined as Python code rather than a separate grammar syntax.
 - **Combination features**: The parser comes with standard parser combinator methods and functions such as: combining parsers in sequence; matching alternative parsers until one matches; making a parser optional; repeatedly matching a parser until it no longer matches; mapping a parsing result through a function, and more.
 - **Type checking**: Parmancer has a lot of type information which makes it easier to use with IDEs and type checkers.
 
