@@ -88,7 +88,8 @@ Readings (3:02 PM)
 class Id:
     id: str = take(regex(r"[^\s]+") << whitespace.optional())
     from_year: Optional[int] = take(
-        regex("[0-9]+").map(int).set_name("Numeric").optional() << whitespace.optional()
+        regex("[0-9]+").map(int).with_name("Numeric").optional()
+        << whitespace.optional()
     )
 
 
@@ -168,9 +169,9 @@ def test_permutation_parser() -> None:
 
     @dataclass
     class Person:
-        name: str = take(regex(r"[a-zA-Z]+").set_name("name") << any_end)
-        age: int = take(regex(r"\d+").map(int).set_name("integer age") << any_end)
-        id: str = take(regex(r"\d{3}-\d{3}").set_name("id") << any_end)
+        name: str = take(regex(r"[a-zA-Z]+").with_name("name") << any_end)
+        age: int = take(regex(r"\d+").map(int).with_name("integer age") << any_end)
+        id: str = take(regex(r"\d{3}-\d{3}").with_name("id") << any_end)
 
     parser = gather_perm(Person)
 

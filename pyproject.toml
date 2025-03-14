@@ -1,14 +1,16 @@
-[tool.poetry]
+[project]
 name = "parmancer"
-version = "0.1.1"
+version = "0.2.0"
 description = "Parse structured data from text using parser combinators"
-authors = ["Rob Hornby <robjhornby@gmail.com>"]
+authors = [{ name = "Rob Hornby", email = "robjhornby@gmail.com" }]
+requires-python = ">=3.8"
 readme = "README.md"
-packages = [{include = "parmancer"}]
 license = "MIT"
-documentation = "https://parmancer.github.io/parmancer/"
-repository = "https://github.com/parmancer/parmancer"
-keywords = ["parser", "parsing", "parser combinator"]
+keywords = [
+    "parser",
+    "parsing",
+    "parser combinator",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Topic :: Software Development :: Compilers",
@@ -20,27 +22,35 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12"
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = ["typing-extensions>=4.5.0"]
+
+[project.urls]
+Repository = "https://github.com/parmancer/parmancer"
+Documentation = "https://parmancer.com"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-markdown-docs ; python_version >= '3.8' and python_version < '4'",
+    "mypy>=1",
+    "pyright>=1.1",
+    "docutils>=0.21.2 ; python_version >= '3.9'",
+    "pdoc>=14.4.0,<15",
+    "mkinit>=1.1.0,<2",
+    "pre-commit ; python_version >= '3.8' and python_version < '4'",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.8"
-typing-extensions = ">=4.5.0"
+[tool.hatch.build.targets.sdist]
+include = ["parmancer"]
 
-[tool.poetry.group.dev.dependencies]
-pytest = ">=8"
-pytest-markdown-docs = {version = "*", python = ">=3.8,<4"}
-mypy = ">=1"
-pyright = ">=1.1"
-docutils = {version = ">=0.21.2", python = ">=3.9"}
-pdoc = "^14.4.0"
-mkinit = "^1.1.0"
-pre-commit = {version = "*", python = ">=3.8,<4"}
-
+[tool.hatch.build.targets.wheel]
+include = ["parmancer"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 88

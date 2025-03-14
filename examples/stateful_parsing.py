@@ -67,7 +67,9 @@ def test_stateful_parser_failure() -> None:
     def person(s: TextState) -> Result[Person]:
         name = s.apply(regex(r"\w+") << whitespace)
 
-        age = name.state.apply((regex(r"\d+").set_name("digit") << whitespace).map(int))
+        age = name.state.apply(
+            (regex(r"\d+").with_name("digit") << whitespace).map(int)
+        )
 
         return age.state.success(Person(name.value, age.value, "default"))
 
