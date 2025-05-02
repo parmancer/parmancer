@@ -271,6 +271,17 @@ class Result(Generic[T_co]):
     A result of running a parser, including whether it failed or succeeded, the parsed
     value if it succeeded, the text state after parsing, and any failure information
     about the furthest position in the text which has been parsed so far.
+
+    The generic type parameter `T_co` represents the type of the parsed value when the
+    parsing operation succeeds. This type corresponds to the return type of the parser
+    that produced this result. For example:
+
+    - `Result[str]`: Result of a parser that produces string values
+    - `Result[int]`: Result of a parser that produces integer values
+    - `Result[List[T]]`: Result of a parser that produces lists of values of type T
+
+    The `_co` suffix indicates that the type parameter is covariant, which means that if
+    `Child` is a subtype of `Parent`, then `Result[Child]` is a subtype of `Result[Parent]`.
     """
 
     status: bool
@@ -320,7 +331,18 @@ class ResultAsException(RuntimeError, Generic[T_co]):
 
 class Parser(Generic[T_co]):
     """
-    Parser base.
+    Parser base class that defines the core parsing interface.
+
+    The generic type parameter `T_co` represents the type of value that the parser produces
+    when it successfully parses input text. For example:
+
+    - `Parser[str]`: A parser that produces string values
+    - `Parser[int]`: A parser that produces integer values
+    - `Parser[List[str]]`: A parser that produces lists of strings
+    - `Parser[Tuple[str, int]]`: A parser that produces tuples containing a string and an integer
+
+    The `_co` suffix indicates that the type parameter is covariant, which means that if
+    `Child` is a subtype of `Parent`, then `Parser[Child]` is a subtype of `Parser[Parent]`.
 
     Subclasses can override the `parse_result` method to create a specific parser, see
     `String` for example.
