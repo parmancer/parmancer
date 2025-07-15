@@ -60,7 +60,6 @@ from typing import Any, List, Tuple
 from typing_extensions import Self, TypeVar
 
 from examples.dataclass_parser_demo import File, text
-from examples.json import json_value
 from parmancer import Result, TextState, gather
 
 _T = TypeVar("_T")

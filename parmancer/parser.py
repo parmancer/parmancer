@@ -685,8 +685,8 @@ class Parser(Generic[T_co]):
         return seq(self, other).map(lambda x: x[0] + x[1], "Add")
 
     def concat(
-        self: Parser[Iterable[SupportsSelfAdd[T]]],
-    ) -> Parser[T]:
+        self: Parser[Iterable[SupportsAdd[T, T1]]],
+    ) -> Parser[T1]:
         """
         Add all the elements of an iterable result together.
 
