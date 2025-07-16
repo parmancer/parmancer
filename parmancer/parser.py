@@ -254,15 +254,30 @@ class ParseError(ValueError):
         """
         Error text to display, including information about whichever parser(s) consumed
         the most text, along with a small window of context showing where parsing
-        failed.
+        failed. If debug mode was used, includes detailed parser state information.
         """
         furthest_state = self.state.at(max(failure.index for failure in self.failures))
         messages = sorted(f"'{info.message}'" for info in self.failures)
 
+        # Build the basic error message
         if len(messages) == 1:
-            return f"failed with {messages[0]}\nFurthest parsing position:\n{furthest_state.context_display()}"
+            basic_error = f"failed with {messages[0]}\nFurthest parsing position:\n{furthest_state.context_display()}"
         else:
-            return f"failed with {', '.join(messages)}\nFurthest parsing position:\n{furthest_state.context_display()}"
+            basic_error = f"failed with {', '.join(messages)}\nFurthest parsing position:\n{furthest_state.context_display()}"
+
+        # Check if this is a debug state and add debug information
+        try:
+            # Import here to avoid circular imports
+            from parmancer.debug import DebugTextState
+
+            if isinstance(self.state, DebugTextState):
+                debug_info = self.state.get_debug_info()
+                return f"{basic_error}\n\n{debug_info}"
+        except ImportError:
+            # If debug module isn't available, just return basic error
+            pass
+
+        return basic_error
 
 
 @dataclass(**_slots)
@@ -350,8 +365,30 @@ class Parser(Generic[T_co]):
 
     name: str = "Parser"
 
+    @overload
+    def parse(self: Parser[T_co], text: str, *, debug: Literal[True]) -> T_co: ...
+
+    @overload
     def parse(
-        self: Parser[T_co], text: str, state_handler: Type[TextState] = TextState
+        self: Parser[T_co],
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: Literal[False] = False,
+    ) -> T_co: ...
+
+    @overload
+    def parse(
+        self: Parser[T_co],
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: bool = False,
+    ) -> T_co: ...
+
+    def parse(
+        self: Parser[T_co],
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: bool = False,
     ) -> T_co:
         """
         Run the parser on input text, returning the parsed value or raising a
@@ -359,15 +396,38 @@ class Parser(Generic[T_co]):
 
         `text` - the text to be parsed
         `state_handler` (optional) - the class to use for handling parser state
+        `debug` (optional) - if True, enables debug mode with detailed error information
         """
-        state = state_handler.start(text)
+        if debug:
+            # Import here to avoid circular imports
+            from parmancer.debug import DebugTextState
+
+            state: TextState = DebugTextState.start(text)
+        else:
+            state = state_handler.start(text)
         result = (self << end_of_text).parse_result(state)
         if not result.status:
             raise ParseError(result.state.failures, result.state)
         return result.value
 
+    @overload
+    def match(self, text: str, *, debug: Literal[True]) -> Result[T_co]: ...
+
+    @overload
     def match(
-        self, text: str, state_handler: Type[TextState] = TextState
+        self,
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: Literal[False] = False,
+    ) -> Result[T_co]: ...
+
+    @overload
+    def match(
+        self, text: str, state_handler: Type[TextState] = TextState, debug: bool = False
+    ) -> Result[T_co]: ...
+
+    def match(
+        self, text: str, state_handler: Type[TextState] = TextState, debug: bool = False
     ) -> Result[T_co]:
         """
         Run the parser on input text, returning the parsed result.
@@ -377,8 +437,15 @@ class Parser(Generic[T_co]):
 
         `text` - the text to be parsed
         `state_handler` (optional) - the class to use for handling parser state
+        `debug` (optional) - if True, enables debug mode with detailed error information
         """
-        state = state_handler.start(text)
+        if debug:
+            # Import here to avoid circular imports
+            from parmancer.debug import DebugTextState
+
+            state: TextState = DebugTextState.start(text)
+        else:
+            state = state_handler.start(text)
         return (self << end_of_text).parse_result(state)
 
     def parse_result(self, state: TextState) -> Result[T_co]:
@@ -1624,12 +1691,13 @@ class DataclassSequence(Parser[DataclassType]):
     field_parsers: Dict[str, Parser[Any]]
 
     def __post_init__(self) -> None:
-        self.name = f"Data:{self.model.__name__}"
+        self.name = f"{self.model.__name__}"
 
     def parse_result(self, state: TextState) -> Result[DataclassType]:
         parsed_fields: Dict[str, Any] = {}
         for name, parser in self.field_parsers.items():
-            self.name = f"Data:{self.model.__name__}/field:{name}"
+            # Change the name to include the current field to help debug info
+            self.name = f"{self.model.__name__}-->field:{name}"
             result = parser.parse_result(state)
             if not result.status:
                 return result

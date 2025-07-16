@@ -124,6 +124,7 @@ For example, a dataclass field of type `str` cannot be associated with a parser 
 - **Regular Python**: Some approaches to parsing use a separate grammar definition outside of Python which goes through a compilation or generation step before it can be used in Python, which can lead to black boxes. Parmancer parsers are defined as Python code rather than a separate grammar syntax.
 - **Combination features**: The parser comes with standard parser combinator methods and functions such as: combining parsers in sequence; matching alternative parsers until one matches; making a parser optional; repeatedly matching a parser until it no longer matches; mapping a parsing result through a function, and more.
 - **Type checking**: Parmancer has a lot of type information which makes it easier to use with IDEs and type checkers.
+- **Debug mode**: Built-in debug mode (`parser.parse(text, debug=True)`) provides detailed parse tree visualization and failure analysis to help understand and fix parsing issues.
 
 Parmancer is not for creating performant parsers, its speed is similar to other pure Python parsing libraries.
 Its purpose is to create understandable, testable and maintainable parsers.
@@ -164,6 +165,7 @@ from parmancer.parser import (
     success,
     take,
 )
+from parmancer.debug import DebugTextState
 
 __all__ = [
     "string",
@@ -193,6 +195,7 @@ __all__ = [
     "ParseError",
     "FailureInfo",
     "TextState",
+    "DebugTextState",
 ]
 
 
