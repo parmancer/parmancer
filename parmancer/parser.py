@@ -397,6 +397,11 @@ class Parser(Generic[T_co]):
         `text` - the text to be parsed
         `state_handler` (optional) - the class to use for handling parser state
         `debug` (optional) - if True, enables debug mode with detailed error information
+
+        Debug mode provides detailed information about parser execution when parsing fails,
+        including a parse tree that shows successful parsers (marked with "= value") and
+        failed parsers (marked with "X (failed)"). This is useful during development but
+        has performance overhead.
         """
         if debug:
             # Import here to avoid circular imports
@@ -438,6 +443,9 @@ class Parser(Generic[T_co]):
         `text` - the text to be parsed
         `state_handler` (optional) - the class to use for handling parser state
         `debug` (optional) - if True, enables debug mode with detailed error information
+
+        Debug mode provides the same detailed parser execution information as `Parser.parse`,
+        but accessible through the Result object's state rather than a raised exception.
         """
         if debug:
             # Import here to avoid circular imports

@@ -21,68 +21,72 @@ class Person:
     age: int = take(string(" ") >> regex(r"\d+").map(int))
 
 
-def demo_basic_debug() -> None:
+def test_basic_debug_mode() -> None:
     """Demonstrate debug mode with a simple parser."""
-    print("=== Basic Debug Mode Demo ===")
     parser = string("hello")
 
-    print("Normal mode error:")
+    # Normal mode error should be concise
     try:
         parser.parse("world")
+        assert False, "Expected ParseError"
     except ParseError as e:
-        print(str(e))
+        normal_error = str(e)
+        assert "failed with ''hello''" in normal_error
 
-    print("\nDebug mode error:")
+    # Debug mode error should include parse tree
     try:
         parser.parse("world", debug=True)
+        assert False, "Expected ParseError"
     except ParseError as e:
-        print(str(e))
+        debug_error = str(e)
+        assert "Debug information:" in debug_error
+        assert "Parse tree:" in debug_error
+        assert "'hello' X (failed)" in debug_error
 
 
-def demo_complex_debug() -> None:
+def test_complex_debug_mode() -> None:
     """Demonstrate debug mode with a complex dataclass parser."""
-    print("\n=== Complex Parser Debug Mode Demo ===")
     parser = gather(Person)
 
-    print("Attempting to parse 'John abc' (should fail on age parsing):")
+    # This should fail when trying to parse the age
     try:
         parser.parse("John abc", debug=True)
+        assert False, "Expected ParseError"
     except ParseError as e:
-        print(str(e))
+        debug_error = str(e)
+        assert "Debug information:" in debug_error
+        assert "Parse tree:" in debug_error
+        # Should show the dataclass structure and field parsing
+        assert "Person" in debug_error
+        assert "field:name" in debug_error
+        assert "field:age" in debug_error
 
 
-def demo_furthest_parser_tracking() -> None:
+def test_furthest_parser_tracking() -> None:
     """Demonstrate how debug mode shows the furthest parser that attempted to parse."""
-    print("\n=== Furthest Parser Tracking Demo ===")
-
     # Parser with multiple alternatives that fail at different positions
     parser = one_of(
         seq(string("hello"), string(" "), regex(r"\d+")).with_name("Option A"),
         seq(string("hello"), string(" "), regex(r"[A-Z]+")).with_name("Option B"),
     )
 
-    print("Attempting to parse 'hello world' with multiple alternatives:")
-    print("- First alternative expects digits after 'hello '")
-    print("- Second alternative expects uppercase letters after 'hello '")
-    print("Both will fail at the same furthest position (after 'hello '):")
-
     try:
         parser.parse("hello world", debug=True)
+        assert False, "Expected ParseError"
     except ParseError as e:
-        print(str(e))
+        debug_error = str(e)
+        assert "Debug information:" in debug_error
+        assert "Option A" in debug_error
+        assert "Option B" in debug_error
+        # Both alternatives should show they got past "hello " but failed on the final part
+        assert "'hello' = 'hello'" in debug_error
+        assert "' ' = ' '" in debug_error
 
 
-def demo_successful_parsing() -> None:
+def test_successful_parsing_with_debug() -> None:
     """Show that debug mode works for successful parsing too."""
-    print("\n=== Successful Parsing with Debug Mode ===")
     parser = gather(Person)
 
+    # Debug mode should work the same for successful parsing
     result = parser.parse("Alice 25", debug=True)
-    print(f"Successfully parsed: {result}")
-
-
-if __name__ == "__main__":
-    demo_basic_debug()
-    demo_complex_debug()
-    demo_furthest_parser_tracking()
-    demo_successful_parsing()
+    assert result == Person(name="Alice", age=25)

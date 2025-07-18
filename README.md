@@ -45,6 +45,17 @@ assert result == ("World", 6)
 assert parser.parse("Hello Example! 10 + 11") == ("Example", 21)
 ```
 
+Type checkers such as `mypy` and `Pylance`'s type checker help during development by revealing type information and catching type errors.
+
+Here the in-line types are displayed automatically with VSCode's Python extension and the 'Inlay Hints' setting:
+
+![Type annotations for Parmancer parsers](../docs/intro_example.gif)
+
+When the type of a parser doesn't match what's expected, such as in the following example, a type error reveals the problem as soon as the code is type checked, without having to run the code.
+In this example the `Parser.unpack` method is being used to unpack the result tuple of type `(str, int)` into a function which expects arguments of type `(str, str)` which is a type incompatibility:
+
+![Type mismatch for the unpack method](../docs/type_mismatch.png)
+
 ## Dataclass parsers
 
 A key feature of Parmancer is the ability to create parsers which return dataclass instances using a short syntax where parsers are directly associated with each field of a dataclass.
@@ -70,6 +81,7 @@ numeric = regex(r"\d+(\.\d+)?").map(float)
 any_text = regex(r"[^\n]+")
 line_break = string("\n")
 
+
 # Define parsers for the sensor readings and device information
 @dataclass
 class Reading:
@@ -78,14 +90,16 @@ class Reading:
     # Matches text like `300.1, 301, 300`
     values: list[float] = take(numeric.sep_by(string(", ")) << line_break)
 
+
 @dataclass
 class Device:
-    # Matches text like `Device: SensorA`
+    # Matches text like `Device: SensorA`
     name: str = take(string("Device: ") >> any_text << line_break)
     # Matches text like `ID: abc001`
     id: str = take(string("ID: ") >> any_text << line_break)
     # Matches the entire `Reading` dataclass parser 0, 1 or many times
     readings: list[Reading] = take(gather(Reading).many())
+
 
 # Gather the fields of the `Device` dataclass into a single combined parser
 # Note the `Device.readings` field parser uses the `Reading` dataclass parser
@@ -103,6 +117,11 @@ assert parser.parse(sample_text) == Device(
 )
 ```
 
+Dataclass parsers come with type annotations which make it easy to write them with hints from an IDE.
+For example, a dataclass field of type `str` cannot be associated with a parser of type `Parser[int]` - the parser has to produce a string (`Parser[str]`) for it to be compatible, and a type checker can reveal this while writing code in an IDE:
+
+![Dataclass field parser type error](../docs/dataclass_type_mismatch.png)
+
 ## Why use Parmancer?
 
 - **Simple construction**: Simple parsers can be defined concisely and independently, and then combined with short, understandable **combinator** functions and methods which replace the usual branching and sequencing boilerplate of parsers written in vanilla Python.
@@ -110,6 +129,7 @@ assert parser.parse(sample_text) == Device(
 - **Regular Python**: Some approaches to parsing use a separate grammar definition outside of Python which goes through a compilation or generation step before it can be used in Python, which can lead to black boxes. Parmancer parsers are defined as Python code rather than a separate grammar syntax.
 - **Combination features**: The parser comes with standard parser combinator methods and functions such as: combining parsers in sequence; matching alternative parsers until one matches; making a parser optional; repeatedly matching a parser until it no longer matches; mapping a parsing result through a function, and more.
 - **Type checking**: Parmancer has a lot of type information which makes it easier to use with IDEs and type checkers.
+- **Debug mode**: Built-in debug mode (`parser.parse(text, debug=True)`) provides detailed parse tree visualization including failures to help understand and fix parsing issues.
 
 Parmancer is not for creating performant parsers, its speed is similar to other pure Python parsing libraries.
 Its purpose is to create understandable, testable and maintainable parsers.
@@ -119,8 +139,50 @@ Please leave feedback and suggestions in the GitHub issue tracker.
 
 Parmancer is based on [Parsy](https://parsy.readthedocs.io/en/latest/overview.html) (and [typed-parsy](https://github.com/python-parsy/typed-parsy)) which is an excellent parsing library.
 
+## Debug mode
+
+When developing parsers, it can be helpful to understand why a parser fails on certain input. Parmancer includes a debug mode that provides detailed information about parser execution when parsing fails.
+
+To enable debug mode, pass `debug=True` to the `parse()` method:
+
+```python
+from parmancer import string, regex, seq, ParseError
+
+# Create a simple parser that expects a greeting followed by a number
+parser = seq(string("Hello "), regex(r"\d+"))
+
+# This will fail - let's see why
+try:
+    parser.parse("Hello world", debug=True)
+except ParseError as e:
+    print(e)
+```
+
+The debug output shows a parse tree indicating which parsers succeeded and which failed:
+
+```
+failed with '\d+'
+Furthest parsing position:
+Hello world
+~~~~~~^
+
+Debug information:
+==================
+Parse tree:
+Parser
+└─KeepOne
+  └─sequence
+    ├─'Hello ' = 'Hello '
+    └─\d+ X (failed)
+```
+
+This shows that the `'Hello '` parser succeeded, but the `\d+` regex parser failed when it encountered `"world"` instead of digits.
+
+Debug mode is useful during development but has performance overhead, so it should be disabled in production code.
+
 ## API documentation and examples
 
 The API docs include minimal examples of each parser and combinator.
 
-The GitHub repository has an `examples` folder containing larger examples which use multiple features.
+The [GitHub repository](https://github.com/parmancer/parmancer) has an `examples` folder containing larger examples which use multiple features.
+

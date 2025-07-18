@@ -9,6 +9,18 @@ and displaying detailed information about the parser state, including:
 
 Additional information is kept at the cost of performance, so it should only be
 used during development and not in production code.
+
+Example:
+    >>> from parmancer import string, regex, seq, ParseError
+    >>> parser = seq(string("Hello "), regex(r"\\d+"))
+    >>> try:
+    ...     parser.parse("Hello world", debug=True)
+    ... except ParseError as e:
+    ...     print("Debug output shows parse tree:")
+    ...     # Output includes parse tree showing 'Hello ' succeeded, \\d+ failed
+    Debug output shows parse tree:
+
+The debug output helps identify exactly where parsing failed and what was expected.
 """
 
 from __future__ import annotations
@@ -21,7 +33,7 @@ from typing import Any, List, Tuple
 
 from typing_extensions import Self
 
-from parmancer.parser import TextState
+from parmancer.parser import FailureInfo, TextState
 
 
 class _Missing:
@@ -189,7 +201,9 @@ class DebugTextState(TextState):
 
     tree: Node = field(default_factory=Node.default)
 
-    def progress(self: Self, index: int, failures: Tuple[Any, ...] = tuple()) -> Self:
+    def progress(
+        self: Self, index: int, failures: Tuple[FailureInfo, ...] = tuple()
+    ) -> Self:
         """
         Override progress to maintain the tree state across state transitions.
         """

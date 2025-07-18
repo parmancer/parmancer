@@ -42,6 +42,7 @@ dev = [
     "pdoc>=14.4.0,<15",
     "mkinit>=1.1.0,<2",
     "pre-commit ; python_version >= '3.8' and python_version < '4'",
+    "pydoc-markdown>=4.8.2",
 ]
 
 [tool.hatch.build.targets.sdist]
