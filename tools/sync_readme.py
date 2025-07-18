@@ -19,18 +19,18 @@ from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer
 
 README_PATH = Path(__file__).parents[1].joinpath("README.md")
 
+
 def extract_module_docstring() -> str:
     """Extract the module docstring from parmancer/__init__.py as markdown."""
     pydoc = PydocMarkdown(
         loaders=[PythonLoader(search_path=["."], modules=["parmancer"])],
-        processors=[FilterProcessor(
-            expression="not hasattr(obj, 'parent') or obj.parent is None",
-            do_not_filter_modules=True
-        )],
-        renderer=MarkdownRenderer(
-            render_module_header=False,
-            render_toc=False
-        )
+        processors=[
+            FilterProcessor(
+                expression="not hasattr(obj, 'parent') or obj.parent is None",
+                do_not_filter_modules=True,
+            )
+        ],
+        renderer=MarkdownRenderer(render_module_header=False, render_toc=False),
     )
 
     modules = pydoc.load_modules()
@@ -40,47 +40,49 @@ def extract_module_docstring() -> str:
     with redirect_stdout(markdown_output):
         pydoc.render(modules)
 
-    return markdown_output.getvalue()
+    # Add a top-level header
+    readme_content = f"# Parmancer\n\n{markdown_output.getvalue()}"
+    # Ensure 1 newline at end
+    readme_content = readme_content.rstrip("\n") + "\n"
+    return readme_content
 
 
 def check_sync() -> bool:
     """Check if README.md is synchronized with module docstring."""
-    readme_path = README_PATH
-    if not readme_path.exists():
-        print("Error: README.md does not exist", file=sys.stderr)
-        return False
-
-    docstring_content = extract_module_docstring()
-    expected_readme_content = f"# Parmancer\n\n{docstring_content}"
-    readme_content = readme_path.read_text()
+    expected_readme_content = extract_module_docstring()
+    readme_content = README_PATH.read_text()
 
     return expected_readme_content == readme_content
 
 
-def sync_readme():
+def sync_readme() -> None:
     """Update README.md from module docstring."""
-    content = extract_module_docstring()
-    if not content.strip():
-        print("Error: No content extracted from module docstring", file=sys.stderr)
-        sys.exit(1)
-
-    readme_content = f"# Parmancer\n\n{content}"
-    README_PATH.write_text(readme_content)
+    README_PATH.write_text(extract_module_docstring())
     print("README.md updated from module docstring")
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Sync README.md with module docstring")
-    parser.add_argument("--check", action="store_true", help="Check if README.md is synchronized (don't update)")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check if README.md is synchronized (don't update)",
+    )
     args = parser.parse_args()
 
     if args.check:
         if check_sync():
             print("README.md is synchronized with module docstring")
         else:
-            print("Error: README.md is not synchronized with module docstring", file=sys.stderr)
-            print("Run tools/sync_readme.py without --check to update README.md", file=sys.stderr)
+            print(
+                "Error: README.md is not synchronized with module docstring",
+                file=sys.stderr,
+            )
+            print(
+                "Run tools/sync_readme.py without --check to update README.md",
+                file=sys.stderr,
+            )
             sys.exit(1)
     else:
         sync_readme()

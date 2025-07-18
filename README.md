@@ -185,4 +185,3 @@ Debug mode is useful during development but has performance overhead, so it shou
 The API docs include minimal examples of each parser and combinator.
 
 The [GitHub repository](https://github.com/parmancer/parmancer) has an `examples` folder containing larger examples which use multiple features.
-
