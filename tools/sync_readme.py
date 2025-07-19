@@ -8,6 +8,7 @@ With --check flag, only checks if they are synchronized.
 
 import argparse
 import io
+import re
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -18,6 +19,17 @@ from pydoc_markdown.contrib.processors.filter import FilterProcessor
 from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer
 
 README_PATH = Path(__file__).parents[1].joinpath("README.md")
+
+
+def fix_image_paths_for_readme(content: str) -> str:
+    """
+    Fix relative image paths for README.md context.
+
+    Changes '../docs/' paths to 'docs/' since README.md is at repository root,
+    while keeping the original paths working for pdoc (which processes from module context).
+    """
+    # Replace ../docs/ with docs/ in image markdown syntax
+    return re.sub(r'!\[([^\]]*)\]\(\.\./docs/', r'![\1](docs/', content)
 
 
 def extract_module_docstring() -> str:
@@ -42,6 +54,8 @@ def extract_module_docstring() -> str:
 
     # Add a top-level header
     readme_content = f"# Parmancer\n\n{markdown_output.getvalue()}"
+    # Fix image paths for README.md context
+    readme_content = fix_image_paths_for_readme(readme_content)
     # Ensure 1 newline at end
     readme_content = readme_content.rstrip("\n") + "\n"
     return readme_content

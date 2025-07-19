@@ -49,12 +49,12 @@ Type checkers such as `mypy` and `Pylance`'s type checker help during developmen
 
 Here the in-line types are displayed automatically with VSCode's Python extension and the 'Inlay Hints' setting:
 
-![Type annotations for Parmancer parsers](../docs/intro_example.gif)
+![Type annotations for Parmancer parsers](docs/intro_example.gif)
 
 When the type of a parser doesn't match what's expected, such as in the following example, a type error reveals the problem as soon as the code is type checked, without having to run the code.
 In this example the `Parser.unpack` method is being used to unpack the result tuple of type `(str, int)` into a function which expects arguments of type `(str, str)` which is a type incompatibility:
 
-![Type mismatch for the unpack method](../docs/type_mismatch.png)
+![Type mismatch for the unpack method](docs/type_mismatch.png)
 
 ## Dataclass parsers
 
@@ -120,7 +120,7 @@ assert parser.parse(sample_text) == Device(
 Dataclass parsers come with type annotations which make it easy to write them with hints from an IDE.
 For example, a dataclass field of type `str` cannot be associated with a parser of type `Parser[int]` - the parser has to produce a string (`Parser[str]`) for it to be compatible, and a type checker can reveal this while writing code in an IDE:
 
-![Dataclass field parser type error](../docs/dataclass_type_mismatch.png)
+![Dataclass field parser type error](docs/dataclass_type_mismatch.png)
 
 ## Why use Parmancer?
 
