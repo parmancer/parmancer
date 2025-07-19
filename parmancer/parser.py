@@ -569,7 +569,6 @@ class Parser(Generic[T_co]):
         assert parser.parse("1, 2, 30") == ["1", "2", "30"]
         ```
 
-        :param self: _description_
         :param sep: The parser acting as a separator
         :param min_count: Optional minimum number of repeats
         :param max_count: Optional maximum number of repeats
