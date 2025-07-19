@@ -1,9 +1,9 @@
 [project]
 name = "parmancer"
-version = "0.2.0"
+version = "0.2.1"
 description = "Parse structured data from text using parser combinators"
 authors = [{ name = "Rob Hornby", email = "robjhornby@gmail.com" }]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme = "README.md"
 license = "MIT"
 keywords = [
@@ -18,13 +18,15 @@ classifiers = [
     "Topic :: Text Processing",
     "Typing :: Typed",
     "Topic :: File Formats",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
-dependencies = ["typing-extensions>=4.5.0"]
+dependencies = [
+    "typing-extensions>=4.5.0",
+]
 
 [project.urls]
 Repository = "https://github.com/parmancer/parmancer"
@@ -35,11 +37,12 @@ dev = [
     "pytest>=8",
     "pytest-markdown-docs ; python_version >= '3.8' and python_version < '4'",
     "mypy>=1",
-    "pyright>=1.1",
+    "pyright>=1.1.400",
     "docutils>=0.21.2 ; python_version >= '3.9'",
     "pdoc>=14.4.0,<15",
     "mkinit>=1.1.0,<2",
     "pre-commit ; python_version >= '3.8' and python_version < '4'",
+    "pydoc-markdown>=4.8.2",
 ]
 
 [tool.hatch.build.targets.sdist]

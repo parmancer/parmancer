@@ -10,6 +10,10 @@ Using a type checker with Parmancer gives immediate feedback about parser result
 pip install parmancer
 ```
 
+## Documentation
+
+https://parmancer.com
+
 ## Introductory example
 
 This example shows a parser which can parse text like `"Hello World! 1 + 2 + 3"` to extract the name in `Hello <name>!` and find the sum of the numbers which come after it:
@@ -124,6 +128,7 @@ For example, a dataclass field of type `str` cannot be associated with a parser 
 - **Regular Python**: Some approaches to parsing use a separate grammar definition outside of Python which goes through a compilation or generation step before it can be used in Python, which can lead to black boxes. Parmancer parsers are defined as Python code rather than a separate grammar syntax.
 - **Combination features**: The parser comes with standard parser combinator methods and functions such as: combining parsers in sequence; matching alternative parsers until one matches; making a parser optional; repeatedly matching a parser until it no longer matches; mapping a parsing result through a function, and more.
 - **Type checking**: Parmancer has a lot of type information which makes it easier to use with IDEs and type checkers.
+- **Debug mode**: Built-in debug mode (`parser.parse(text, debug=True)`) provides detailed parse tree visualization including failures to help understand and fix parsing issues.
 
 Parmancer is not for creating performant parsers, its speed is similar to other pure Python parsing libraries.
 Its purpose is to create understandable, testable and maintainable parsers.
@@ -133,11 +138,52 @@ Please leave feedback and suggestions in the GitHub issue tracker.
 
 Parmancer is based on [Parsy](https://parsy.readthedocs.io/en/latest/overview.html) (and [typed-parsy](https://github.com/python-parsy/typed-parsy)) which is an excellent parsing library.
 
+## Debug mode
+
+When developing parsers, it can be helpful to understand why a parser fails on certain input. Parmancer includes a debug mode that provides detailed information about parser execution when parsing fails.
+
+To enable debug mode, pass `debug=True` to the `parse()` method:
+
+```python
+from parmancer import string, regex, seq, ParseError
+
+# Create a simple parser that expects a greeting followed by a number
+parser = seq(string("Hello "), regex(r"\d+"))
+
+# This will fail - let's see why
+try:
+    parser.parse("Hello world", debug=True)
+except ParseError as e:
+    print(e)
+```
+
+The debug output shows a parse tree indicating which parsers succeeded and which failed:
+
+```
+failed with '\d+'
+Furthest parsing position:
+Hello world
+~~~~~~^
+
+Debug information:
+==================
+Parse tree:
+Parser
+└─KeepOne
+  └─sequence
+    ├─'Hello ' = 'Hello '
+    └─\d+ X (failed)
+```
+
+This shows that the `'Hello '` parser succeeded, but the `\d+` regex parser failed when it encountered `"world"` instead of digits.
+
+Debug mode is useful during development but has performance overhead, so it should be disabled in production code.
+
 ## API documentation and examples
 
 The API docs include minimal examples of each parser and combinator.
 
-The GitHub repository has an `examples` folder containing larger examples which use multiple features.
+The [GitHub repository](https://github.com/parmancer/parmancer) has an `examples` folder containing larger examples which use multiple features.
 '''
 
 from parmancer.parser import (
@@ -164,6 +210,7 @@ from parmancer.parser import (
     success,
     take,
 )
+from parmancer.debug import DebugTextState
 
 __all__ = [
     "string",
@@ -193,6 +240,7 @@ __all__ = [
     "ParseError",
     "FailureInfo",
     "TextState",
+    "DebugTextState",
 ]
 
 

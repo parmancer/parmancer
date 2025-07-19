@@ -254,15 +254,30 @@ class ParseError(ValueError):
         """
         Error text to display, including information about whichever parser(s) consumed
         the most text, along with a small window of context showing where parsing
-        failed.
+        failed. If debug mode was used, includes detailed parser state information.
         """
         furthest_state = self.state.at(max(failure.index for failure in self.failures))
         messages = sorted(f"'{info.message}'" for info in self.failures)
 
+        # Build the basic error message
         if len(messages) == 1:
-            return f"failed with {messages[0]}\nFurthest parsing position:\n{furthest_state.context_display()}"
+            basic_error = f"failed with {messages[0]}\nFurthest parsing position:\n{furthest_state.context_display()}"
         else:
-            return f"failed with {', '.join(messages)}\nFurthest parsing position:\n{furthest_state.context_display()}"
+            basic_error = f"failed with {', '.join(messages)}\nFurthest parsing position:\n{furthest_state.context_display()}"
+
+        # Check if this is a debug state and add debug information
+        try:
+            # Import here to avoid circular imports
+            from parmancer.debug import DebugTextState
+
+            if isinstance(self.state, DebugTextState):
+                debug_info = self.state.get_debug_info()
+                return f"{basic_error}\n\n{debug_info}"
+        except ImportError:
+            # If debug module isn't available, just return basic error
+            pass
+
+        return basic_error
 
 
 @dataclass(**_slots)
@@ -271,6 +286,17 @@ class Result(Generic[T_co]):
     A result of running a parser, including whether it failed or succeeded, the parsed
     value if it succeeded, the text state after parsing, and any failure information
     about the furthest position in the text which has been parsed so far.
+
+    The generic type parameter `T_co` represents the type of the parsed value when the
+    parsing operation succeeds. This type corresponds to the return type of the parser
+    that produced this result. For example:
+
+    - `Result[str]`: Result of a parser that produces string values
+    - `Result[int]`: Result of a parser that produces integer values
+    - `Result[List[T]]`: Result of a parser that produces lists of values of type T
+
+    The `_co` suffix indicates that the type parameter is covariant, which means that if
+    `Child` is a subtype of `Parent`, then `Result[Child]` is a subtype of `Result[Parent]`.
     """
 
     status: bool
@@ -320,7 +346,18 @@ class ResultAsException(RuntimeError, Generic[T_co]):
 
 class Parser(Generic[T_co]):
     """
-    Parser base.
+    Parser base class that defines the core parsing interface.
+
+    The generic type parameter `T_co` represents the type of value that the parser produces
+    when it successfully parses input text. For example:
+
+    - `Parser[str]`: A parser that produces string values
+    - `Parser[int]`: A parser that produces integer values
+    - `Parser[List[str]]`: A parser that produces lists of strings
+    - `Parser[Tuple[str, int]]`: A parser that produces tuples containing a string and an integer
+
+    The `_co` suffix indicates that the type parameter is covariant, which means that if
+    `Child` is a subtype of `Parent`, then `Parser[Child]` is a subtype of `Parser[Parent]`.
 
     Subclasses can override the `parse_result` method to create a specific parser, see
     `String` for example.
@@ -328,8 +365,30 @@ class Parser(Generic[T_co]):
 
     name: str = "Parser"
 
+    @overload
+    def parse(self: Parser[T_co], text: str, *, debug: Literal[True]) -> T_co: ...
+
+    @overload
     def parse(
-        self: Parser[T_co], text: str, state_handler: Type[TextState] = TextState
+        self: Parser[T_co],
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: Literal[False] = False,
+    ) -> T_co: ...
+
+    @overload
+    def parse(
+        self: Parser[T_co],
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: bool = False,
+    ) -> T_co: ...
+
+    def parse(
+        self: Parser[T_co],
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: bool = False,
     ) -> T_co:
         """
         Run the parser on input text, returning the parsed value or raising a
@@ -337,15 +396,43 @@ class Parser(Generic[T_co]):
 
         `text` - the text to be parsed
         `state_handler` (optional) - the class to use for handling parser state
+        `debug` (optional) - if True, enables debug mode with detailed error information
+
+        Debug mode provides detailed information about parser execution when parsing fails,
+        including a parse tree that shows successful parsers (marked with "= value") and
+        failed parsers (marked with "X (failed)"). This is useful during development but
+        has performance overhead.
         """
-        state = state_handler.start(text)
+        if debug:
+            # Import here to avoid circular imports
+            from parmancer.debug import DebugTextState
+
+            state: TextState = DebugTextState.start(text)
+        else:
+            state = state_handler.start(text)
         result = (self << end_of_text).parse_result(state)
         if not result.status:
             raise ParseError(result.state.failures, result.state)
         return result.value
 
+    @overload
+    def match(self, text: str, *, debug: Literal[True]) -> Result[T_co]: ...
+
+    @overload
     def match(
-        self, text: str, state_handler: Type[TextState] = TextState
+        self,
+        text: str,
+        state_handler: Type[TextState] = TextState,
+        debug: Literal[False] = False,
+    ) -> Result[T_co]: ...
+
+    @overload
+    def match(
+        self, text: str, state_handler: Type[TextState] = TextState, debug: bool = False
+    ) -> Result[T_co]: ...
+
+    def match(
+        self, text: str, state_handler: Type[TextState] = TextState, debug: bool = False
     ) -> Result[T_co]:
         """
         Run the parser on input text, returning the parsed result.
@@ -355,8 +442,18 @@ class Parser(Generic[T_co]):
 
         `text` - the text to be parsed
         `state_handler` (optional) - the class to use for handling parser state
+        `debug` (optional) - if True, enables debug mode with detailed error information
+
+        Debug mode provides the same detailed parser execution information as `Parser.parse`,
+        but accessible through the Result object's state rather than a raised exception.
         """
-        state = state_handler.start(text)
+        if debug:
+            # Import here to avoid circular imports
+            from parmancer.debug import DebugTextState
+
+            state: TextState = DebugTextState.start(text)
+        else:
+            state = state_handler.start(text)
         return (self << end_of_text).parse_result(state)
 
     def parse_result(self, state: TextState) -> Result[T_co]:
@@ -663,8 +760,8 @@ class Parser(Generic[T_co]):
         return seq(self, other).map(lambda x: x[0] + x[1], "Add")
 
     def concat(
-        self: Parser[Iterable[SupportsSelfAdd[T]]],
-    ) -> Parser[T]:
+        self: Parser[Iterable[SupportsAdd[T, T1]]],
+    ) -> Parser[T1]:
         """
         Add all the elements of an iterable result together.
 
@@ -1602,12 +1699,13 @@ class DataclassSequence(Parser[DataclassType]):
     field_parsers: Dict[str, Parser[Any]]
 
     def __post_init__(self) -> None:
-        self.name = f"Data:{self.model.__name__}"
+        self.name = f"{self.model.__name__}"
 
     def parse_result(self, state: TextState) -> Result[DataclassType]:
         parsed_fields: Dict[str, Any] = {}
         for name, parser in self.field_parsers.items():
-            self.name = f"Data:{self.model.__name__}/field:{name}"
+            # Change the name to include the current field to help debug info
+            self.name = f"{self.model.__name__}-->field:{name}"
             result = parser.parse_result(state)
             if not result.status:
                 return result

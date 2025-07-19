@@ -36,9 +36,9 @@ date_mday = two_digit
 
 @dataclass
 class Date:
-    year: int = take((four_digit | two_digit).map(int) << string("/").optional())
-    month: int = take(two_digit.map(int) << string("/").optional())
-    day: int = take(two_digit.map(int) << string("/").optional())
+    year: int = take((four_digit | two_digit) << string("/").optional())
+    month: int = take(two_digit << string("/").optional())
+    day: int = take(two_digit << string("/").optional())
 
     def to_date(self) -> datetime.date:
         return datetime.date(year=self.year, month=self.month, day=self.day)
@@ -52,12 +52,16 @@ def valid_date(date: Date) -> bool:
         return False
 
 
-ymd = (gather(Date) << end_of_text).gate(valid_date)
-dmy = (gather(Date, field_order=("day", "month", "year")) << end_of_text).gate(
-    valid_date
+ymd = (gather(Date) << end_of_text).gate(valid_date).with_name("YMD")
+dmy = (
+    (gather(Date, field_order=("day", "month", "year")) << end_of_text)
+    .gate(valid_date)
+    .with_name("DMY")
 )
-mdy = (gather(Date, field_order=("month", "day", "year")) << end_of_text).gate(
-    valid_date
+mdy = (
+    (gather(Date, field_order=("month", "day", "year")) << end_of_text)
+    .gate(valid_date)
+    .with_name("MDY")
 )
 
 # `one_of` only succeeds if exactly one of its parsers match
@@ -103,3 +107,7 @@ def test_self_contained_example() -> None:
 
     # This ambiguous input leads to a failure to parse
     assert date.match("01-02-03").status is False
+
+
+if __name__ == "__main__":
+    date_parser.parse("01/02/03", debug=True)

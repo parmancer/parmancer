@@ -1,6 +1,10 @@
 """
 # Debugging combined parsers
 
+This example shows alternative debugging approaches using breakpoints and stateful parsers.
+For a simpler debugging approach, see the debug_mode.py example which demonstrates the
+built-in debug mode functionality that can be enabled with `parser.parse(text, debug=True)`.
+
 Defining and calling parser combinators follows these general steps:
 
 1. Define parsers

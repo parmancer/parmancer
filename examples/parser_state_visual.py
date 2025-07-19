@@ -59,8 +59,8 @@ from typing import Any, List, Tuple
 
 from typing_extensions import Self, TypeVar
 
-from examples.json import json_value
-from parmancer import Result, TextState
+from examples.dataclass_parser_demo import File, text
+from parmancer import Result, TextState, gather
 
 _T = TypeVar("_T")
 
@@ -280,16 +280,4 @@ class StepVisualizer(TextState):
 
 if __name__ == "__main__":
     # Running this file will show the parser state each time a successful parser is found
-    # gather(File).parse(text, state_handler=StepVisualizer)
-
-    json_value.parse(
-        r"""
-    {
-        "a": "b",
-        "c": {"d": 1.2},
-        "e": [true, false{],
-        "f": "\n"
-    }
-    """,
-        state_handler=StepVisualizer,
-    )
+    gather(File).parse(text, state_handler=StepVisualizer)

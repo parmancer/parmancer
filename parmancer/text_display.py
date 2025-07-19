@@ -26,9 +26,9 @@ class LineContext:
     context around it.
 
     :param lines_of_context: The number of lines to keep either side of the cursor
-    :param start_context_index: Global index of the first character of the context window
-    :param end_context_index: Global index of the last character of the context window
-    :param cursor_in_context: Line and column of the target character within the context
+    :param start_index: Global index of the first character of the context window
+    :param end_index: Global index of the last character of the context window
+    :param cursor: Line and column of the target character within the context
     """
 
     lines_of_context: int

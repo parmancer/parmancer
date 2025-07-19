@@ -648,7 +648,7 @@ def test_nested_sequences_are_not_flattened_when_grouped() -> None:
     assert isinstance(first, NamedParser)
     assert isinstance(second, Sequence)
     assert isinstance(third, Map)
-    assert isinstance(third.parser, Sequence)
+    assert isinstance(third.parser, Sequence)  # Underlying type is lost # type: ignore
     assert third.parser.parsers == (first, second)
 
 
@@ -768,8 +768,7 @@ def test_concat_invalid_tuple() -> None:
 
 
 def test_concat_list_of_tuples() -> None:
-    # An update to pyright means this doesn't type check in v1.1.396
-    parser = seq(string("a"), string("b")).many().concat()  # pyright: ignore
+    parser = seq(string("a"), string("b")).many().concat()
     assert parser.parse("abab") == ("a", "b", "a", "b")
 
 
@@ -781,8 +780,7 @@ def test_concat_list_of_ints() -> None:
 
 def test_concat_list_of_lists() -> None:
     """A list of lists is concatenated to a list."""
-    # An update to pyright means this doesn't type check in v1.1.396
-    parser = digit.many().sep_by(string("-")).concat()  # pyright: ignore
+    parser = digit.many().sep_by(string("-")).concat()
     assert parser.parse("12-34-9") == ["1", "2", "3", "4", "9"]
 
 
