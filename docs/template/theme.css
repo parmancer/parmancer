@@ -1,30 +1,63 @@
 :root {
-    --pdoc-background: #111214;
+    --pdoc-background: #1a1b1e;
 }
 
 .pdoc {
-    --text: #e3e4d9;
-    --muted: #adad90;
-    --link: #58a6ff;
-    --link-hover: #3989ff;
-    --code: #1e1e1e;
-    --active: #3c3c3f;
+    /* Improved text colors for better readability */
+    --text: #d4d4d4;
+    --muted: #9d9d9d;
+    --link: #4fc3f7;
+    --link-hover: #29b6f6;
+    --code: #252526;
+    --active: #404040;
 
-    --accent: #1e2127;
-    --accent2: #353446;
+    /* Softer accent colors */
+    --accent: #2d2d30;
+    --accent2: #3e3e42;
 
     --nav-hover: rgba(0, 0, 0, 0.1);
-    --name: #77C1FF;
-    --def: #0cdd0c;
-    --annotation: #00c037;
+    --name: #9cdcfe;
+    --def: #4ec9b0;
+    --annotation: #4ec9b0;
 
-    line-height: 1.7;
+    /* Improved typography for readability */
+    line-height: 1.6;
+    font-weight: 400;
 }
 
 .pdoc-code {
     margin-left: 0em;
     margin-right: 0em;
 }
+
+/* Improved readability adjustments */
+.pdoc {
+    /* Better font rendering for dark themes */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improved heading contrast and spacing */
+.pdoc h1, .pdoc h2, .pdoc h3, .pdoc h4, .pdoc h5, .pdoc h6 {
+    color: #f0f0f0;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* Better code block readability */
+.pdoc pre {
+    background-color: var(--code);
+    border-radius: 6px;
+    border: 1px solid var(--accent2);
+}
+
+/* Improved inline code readability */
+.pdoc code {
+    background-color: var(--accent);
+    color: #e6e6e6;
+    font-weight: 500;
+}
+
 img, svg {
     vertical-align: middle;
     width: 100%;
