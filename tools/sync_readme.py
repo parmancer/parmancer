@@ -29,7 +29,7 @@ def fix_image_paths_for_readme(content: str) -> str:
     while keeping the original paths working for pdoc (which processes from module context).
     """
     # Replace ../docs/ with docs/ in image markdown syntax
-    return re.sub(r'!\[([^\]]*)\]\(\.\./docs/', r'![\1](docs/', content)
+    return re.sub(r"!\[([^\]]*)\]\(\.\./docs/", r"![\1](docs/", content)
 
 
 def extract_module_docstring() -> str:
